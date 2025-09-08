@@ -63,6 +63,7 @@ export default function Page() {
           </div>
 
           <div className="bg-white rounded-3xl border border-gray-100 shadow-xl p-6 md:p-8">
+            <h2 className="h-heading mb-4">RSVP</h2>
             <InviteForm />
           </div>
         </div>
