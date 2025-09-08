@@ -1,501 +1,349 @@
+// src/components/InviteForm.tsx
 "use client";
 
 import React from "react";
+import NumberField from "@/components/NumberField";
 
 type Attendance = "Yes" | "No" | "Maybe";
+type FoodPref = "Veg" | "Non-Veg" | "Mixed";
 
-type FormState = {
+type RsvpForm = {
   name: string;
-  phone: string;
-  attendance: Attendance;
-
-  // Only needed if attending (Yes/Maybe)
-  adults: number;
-  kids5to10: number;
-  kidsU5: number;
-  foodPref: "Veg" | "Non-Veg" | "Mixed";
-  vegCount: number;
-  nonVegCount: number;
-  allergens: string;
-  notes: string;
+  phone?: string;
+  attendance?: Attendance;
+  adults?: number;
+  kids5to10?: number;
+  kidsUnder5?: number;
+  foodPref?: FoodPref;
+  vegCount?: number;
+  nonvegCount?: number;
+  allergens?: string;
+  notes?: string;
 };
 
-type Errors = Partial<Record<keyof FormState, string>>;
-
-const initialForm: FormState = {
-  name: "",
-  phone: "",
-  attendance: "Yes",
-  adults: 0,
-  kids5to10: 0,
-  kidsU5: 0,
-  foodPref: "Veg",
-  vegCount: 0,
-  nonVegCount: 0,
-  allergens: "",
-  notes: "",
-};
+type Errors = Partial<Record<keyof RsvpForm, string>>;
 
 export default function InviteForm() {
-  const [form, setForm] = React.useState<FormState>(initialForm);
-  const [submitting, setSubmitting] = React.useState(false);
-  const [submitted, setSubmitted] = React.useState(false);
-  const [submittedAttendance, setSubmittedAttendance] = React.useState<"Yes" | "No" | "Maybe">("Yes");
+  const [form, setForm] = React.useState<RsvpForm>({ name: "" });
   const [errors, setErrors] = React.useState<Errors>({});
-  const [toast, setToast] = React.useState<{ show: boolean; message: string }>({
-    show: false,
-    message: "",
-  });
+  const [submitting, setSubmitting] = React.useState(false);
+  const [toast, setToast] = React.useState<{ type: "success" | "error"; msg: string } | null>(null);
 
+  // auto-hide toast
   React.useEffect(() => {
-    if (!toast.show) return;
-    const id = setTimeout(() => setToast({ show: false, message: "" }), 2800);
-    return () => clearTimeout(id);
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 3500);
+    return () => clearTimeout(t);
   }, [toast]);
 
-  const onChange: React.ChangeEventHandler<
-    HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-  > = (e) => {
-    const { name, value } = e.target;
+  const attending = form.attendance === "Yes" || form.attendance === "Maybe";
+  const notAttending = form.attendance === "No";
+  const mixedMeals = form.foodPref === "Mixed";
 
-    // Attendance-specific behavior
-    if (name === "attendance") {
-      const nextAttendance = value as Attendance;
-      setForm((prev) => {
-        // If switching to "No", clear/zero optional fields
-        if (nextAttendance === "No") {
-          return {
-            ...prev,
-            attendance: nextAttendance,
-            adults: 0,
-            kids5to10: 0,
-            kidsU5: 0,
-            foodPref: "Veg",
-            vegCount: 0,
-            nonVegCount: 0,
-            allergens: "",
-            notes: "",
-          };
-        }
-        return { ...prev, attendance: nextAttendance };
-      });
-      if (errors.attendance) {
-        setErrors((prev) => {
-          const { attendance, ...rest } = prev;
-          return rest;
-        });
+  // keep counts sane when toggling options
+  React.useEffect(() => {
+    if (!attending) {
+      // clear attending-only fields when switching to "No"
+      setForm((prev) => ({
+        ...prev,
+        adults: undefined,
+        kids5to10: undefined,
+        kidsUnder5: undefined,
+        foodPref: undefined,
+        vegCount: undefined,
+        nonvegCount: undefined,
+        allergens: undefined,
+      }));
+    } else {
+      // if not mixed, clear split counts
+      if (!mixedMeals) {
+        setForm((prev) => ({ ...prev, vegCount: undefined, nonvegCount: undefined }));
       }
-      return;
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.attendance, form.foodPref]);
 
-    setForm((f) => ({
-      ...f,
-      [name]:
-        name === "adults" ||
-        name.startsWith("kids") ||
-        name.endsWith("Count")
-          ? Number(value)
-          : value,
-    }));
-
-    // clear per-field error on edit
-    if (errors[name as keyof FormState]) {
-      setErrors((prev) => {
-        const next = { ...prev };
-        delete next[name as keyof FormState];
-        return next;
-      });
-    }
-  };
-
-  const validate = (): Errors => {
+  function validate(): boolean {
     const e: Errors = {};
+    if (!form.name || !form.name.trim()) e.name = "Please enter your name.";
+    if (!form.attendance) e.attendance = "Please select an option.";
 
-    // Always required
-    if (!form.name.trim()) e.name = "Please enter your name.";
-    if (!/^\+?\d[\d\s\-]{7,}$/.test(form.phone.trim()))
-      e.phone = "Enter a valid phone number.";
-
-    // If NOT attending, skip all other checks
-    if (form.attendance === "No") return e;
-
-    // Validations for attending (Yes/Maybe)
-    if (form.adults < 0) e.adults = "Cannot be negative.";
-    if (form.kids5to10 < 0) e.kids5to10 = "Cannot be negative.";
-    if (form.kidsU5 < 0) e.kidsU5 = "Cannot be negative.";
-
-    if (form.foodPref === "Mixed") {
-      const v = Number(form.vegCount) || 0;
-      const n = Number(form.nonVegCount) || 0;
-      const total =
-        (Number(form.adults) || 0) +
-        (Number(form.kids5to10) || 0) +
-        (Number(form.kidsU5) || 0);
-      if (v < 0) e.vegCount = "Cannot be negative.";
-      if (n < 0) e.nonVegCount = "Cannot be negative.";
-      if (v + n > total) {
-        e.vegCount = "Veg + Non-veg exceed total guests.";
-        e.nonVegCount = "Veg + Non-veg exceed total guests.";
+    if (attending) {
+      if (form.adults === undefined && form.kids5to10 === undefined && form.kidsUnder5 === undefined) {
+        e.adults = "Add at least one attendee.";
+      }
+      if (!form.foodPref) e.foodPref = "Choose a food preference.";
+      if (mixedMeals) {
+        const v = form.vegCount ?? 0;
+        const n = form.nonvegCount ?? 0;
+        if (v + n <= 0) e.vegCount = "Enter veg/non-veg count.";
+        const total =
+          (form.adults ?? 0) + (form.kids5to10 ?? 0) + (form.kidsUnder5 ?? 0);
+        if (v + n > total) e.nonvegCount = "Veg + Non-veg exceeds guests.";
       }
     }
 
-    return e;
-  };
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  }
 
-  const submit: React.FormEventHandler<HTMLFormElement> = async (e) => {
+  async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const fieldErrors = validate();
-    setErrors(fieldErrors);
-    if (Object.keys(fieldErrors).length > 0) return;
-
+    if (!validate()) return;
     setSubmitting(true);
-    try {
-      // If not attending, send zeros/empties for the rest
-      const payload =
-        form.attendance === "No"
-          ? {
-              name: form.name.trim(),
-              phone: form.phone.trim(),
-              attendance: form.attendance,
-              adults: 0,
-              kids5to10: 0,
-              kidsU5: 0,
-              foodPref: "",
-              vegCount: 0,
-              nonVegCount: 0,
-              allergens: "",
-              notes: "",
-              source: "custom-site",
-            }
-          : { ...form, source: "custom-site" };
+    setToast(null);
 
+    try {
       const res = await fetch("/api/rsvp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(form),
       });
-      const json = await res.json().catch(() => ({}));
+      const json = await res.json().catch(() => ({} as any));
       if (!res.ok || json?.ok !== true) {
-        setToast({ show: true, message: "Submission failed. Please try again." });
-        } else {
-        // capture what the user actually submitted
-        setSubmittedAttendance(form.attendance);
+        throw new Error(json?.error || "Submission failed");
+      }
 
-        setSubmitted(true);
+      setToast({
+        type: "success",
+        msg: notAttending
+          ? "Thanks for letting us know. We’ll miss you!"
+          : "Thank you! Your RSVP has been recorded 🎉",
+      });
 
-        // nicer toast per attendance
-        setToast({
-            show: true,
-            message:
-            form.attendance === "No"
-                ? "Thanks for letting us know you can’t make it."
-                : "Thanks! Your RSVP is recorded.",
-        });
-
-        // now it’s safe to reset the form
-        setForm(initialForm);
-        setErrors({});
-        }
-    } catch {
-      setToast({ show: true, message: "Network error. Please try again." });
+      // Optionally reset only some fields
+      setForm((prev) => ({ name: prev.name || "", phone: prev.phone || "" } as RsvpForm));
+      setErrors({});
+    } catch (err: any) {
+      setToast({ type: "error", msg: err?.message || "Something went wrong" });
     } finally {
       setSubmitting(false);
     }
-  };
-
-  const inputClass = (field: keyof FormState) =>
-    `w-full rounded-xl border px-3 py-2 ${
-      errors[field] ? "border-red-500 focus:outline-red-500" : "border-gray-300"
-    }`;
-
-  if (submitted) {
-    return (
-        <>
-        <Toast show={toast.show} message={toast.message} />
-        <div className="bg-white rounded-2xl shadow p-6">
-            <h2 className="text-xl font-semibold mb-2">Thank you! 🎉</h2>
-            {submittedAttendance === "No" ? (
-            <p className="text-gray-600">
-                We’re sorry you can’t make it, but thank you for letting us know. 
-                We’ll miss you at the celebration!
-            </p>
-            ) : (
-            <p className="text-gray-600">
-                Your RSVP has been recorded. We can’t wait to celebrate with you.
-            </p>
-            )}
-            <button
-            className="mt-4 text-indigo-600 underline"
-            onClick={() => setSubmitted(false)}
-            >
-            Submit another response
-            </button>
-        </div>
-        </>
-    );
-    }
-
-
-  const isAttending = form.attendance !== "No";
+  }
 
   return (
-    <>
-      <Toast show={toast.show} message={toast.message} />
-      <form onSubmit={submit} className="bg-white rounded-2xl shadow p-6">
-        <h2 className="h-heading mb-4">RSVP</h2>
+    <section>
+      <div className="mx-auto max-w-4xl">
+        {/* Info note about RSVP importance */}
+        <div className="mb-4 rounded-xl bg-amber-50 text-amber-900 border border-amber-200 px-4 py-3">
+          <p className="text-sm">
+            <strong>Why RSVP?</strong> It helps us plan seating and food accurately so everyone’s
+            comfortable. Please respond even if you{" "}
+            <span className="underline underline-offset-2">can’t make it</span>. Thank you!
+          </p>
+        </div>
 
-        <p className="mb-4 text-sm text-gray-600 bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-        Kindly take a moment to fill this form, even if you are <b>not attending</b>.
-        It helps us plan food, seating and arrangements properly, so that we can
-        welcome everyone without wastage or shortage. Thank you for your support! 🙏
-        </p>
+        {/* Toast */}
+        {toast && (
+          <div
+            role="status"
+            className={`mb-4 rounded-xl px-4 py-3 text-sm ${
+              toast.type === "success"
+                ? "bg-emerald-50 text-emerald-900 border border-emerald-200"
+                : "bg-rose-50 text-rose-900 border border-rose-200"
+            }`}
+          >
+            {toast.msg}
+          </div>
+        )}
 
+        <form
+          onSubmit={onSubmit}
+          className="bg-white rounded-3xl border border-gray-100 shadow-xl p-6 sm:p-8 md:p-10"
+        >
+          {/* Name */}
+          <label htmlFor="name" className="block text-sm font-medium text-black">
+            Your Name
+          </label>
+          <input
+            id="name"
+            type="text"
+            placeholder="Enter your full name"
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            aria-describedby={errors.name ? "err-name" : undefined}
+            className="mt-1 block w-full rounded-md border-gray-300 placeholder-gray-400
+                       focus:border-indigo-500 focus:ring-indigo-500"
+          />
+          {errors.name && (
+            <p id="err-name" className="mt-1 text-xs text-red-600">
+              {errors.name}
+            </p>
+          )}
 
-        <div className="grid sm:grid-cols-2 gap-4">
-          {/* Always required */}
-          <div>
-            <label className="block text-sm font-medium mb-1">
-              Your Name *
+          {/* Phone (optional) */}
+          <div className="mt-4">
+            <label htmlFor="phone" className="block text-sm font-medium text-black">
+              Phone (optional)
             </label>
             <input
-              name="name"
-              value={form.name}
-              onChange={onChange}
-              className={inputClass("name")}
-              placeholder="e.g., Ananya Sharma"
-              aria-invalid={!!errors.name}
-              aria-describedby={errors.name ? "err-name" : undefined}
+              id="phone"
+              type="tel"
+              inputMode="tel"
+              placeholder="e.g., 98765 43210"
+              value={form.phone ?? ""}
+              onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              className="mt-1 block w-full rounded-md border-gray-300 placeholder-gray-400
+                         focus:border-indigo-500 focus:ring-indigo-500"
             />
-            {errors.name && (
-              <p id="err-name" className="mt-1 text-xs text-red-600">
-                {errors.name}
-              </p>
-            )}
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-1">Phone *</label>
-            <input
-              name="phone"
-              value={form.phone}
-              onChange={onChange}
-              className={inputClass("phone")}
-              placeholder="e.g., +91 98xxxxxxx"
-              aria-invalid={!!errors.phone}
-              aria-describedby={errors.phone ? "err-phone" : undefined}
-            />
-            {errors.phone && (
-              <p id="err-phone" className="mt-1 text-xs text-red-600">
-                {errors.phone}
-              </p>
-            )}
-          </div>
-
-          {/* Attendance toggle (drives conditional UI) */}
-          <div>
-            <label className="block text-sm font-medium mb-1">
-              Will you attend?
-            </label>
-            <select
-              name="attendance"
-              value={form.attendance}
-              onChange={onChange}
-              className={inputClass("attendance")}
-            >
-              <option>Yes</option>
-              <option>No</option>
-              <option>Maybe</option>
-            </select>
-          </div>
-
-          {/* Only show these when attending Yes/Maybe */}
-          {isAttending && (
-            <>
-              <div>
-                <label className="block text-sm font-medium mb-1">Adults</label>
-                <input
-                  type="number"
-                  name="adults"
-                  min={0}
-                  value={form.adults}
-                  onChange={onChange}
-                  className={inputClass("adults")}
-                  aria-invalid={!!errors.adults}
-                  aria-describedby={errors.adults ? "err-adults" : undefined}
-                />
-                {errors.adults && (
-                  <p id="err-adults" className="mt-1 text-xs text-red-600">
-                    {errors.adults}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  Kids 5–10
-                </label>
-                <input
-                  type="number"
-                  name="kids5to10"
-                  min={0}
-                  value={form.kids5to10}
-                  onChange={onChange}
-                  className={inputClass("kids5to10")}
-                  aria-invalid={!!errors.kids5to10}
-                  aria-describedby={
-                    errors.kids5to10 ? "err-kids5to10" : undefined
-                  }
-                />
-                {errors.kids5to10 && (
-                  <p id="err-kids5to10" className="mt-1 text-xs text-red-600">
-                    {errors.kids5to10}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  Kids under 5
-                </label>
-                <input
-                  type="number"
-                  name="kidsU5"
-                  min={0}
-                  value={form.kidsU5}
-                  onChange={onChange}
-                  className={inputClass("kidsU5")}
-                  aria-invalid={!!errors.kidsU5}
-                  aria-describedby={errors.kidsU5 ? "err-kidsU5" : undefined}
-                />
-                {errors.kidsU5 && (
-                  <p id="err-kidsU5" className="mt-1 text-xs text-red-600">
-                    {errors.kidsU5}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  Food Preference
-                </label>
-                <select
-                  name="foodPref"
-                  value={form.foodPref}
-                  onChange={onChange}
-                  className={inputClass("foodPref")}
+          {/* Attendance */}
+          <fieldset className="mt-6">
+            <legend className="block text-sm font-medium text-black">Will you attend?</legend>
+            <div className="mt-2 grid grid-cols-3 gap-2">
+              {(["Yes", "No", "Maybe"] as Attendance[]).map((opt) => (
+                <label
+                  key={opt}
+                  className={`flex items-center justify-center rounded-lg border px-3 py-2 cursor-pointer
+                    ${
+                      form.attendance === opt
+                        ? "border-indigo-500 bg-indigo-50 text-indigo-700"
+                        : "border-gray-300 bg-white"
+                    }`}
                 >
-                  <option>Veg</option>
-                  <option>Non-Veg</option>
-                  <option>Mixed</option>
-                </select>
-              </div>
+                  <input
+                    type="radio"
+                    name="attendance"
+                    value={opt}
+                    checked={form.attendance === opt}
+                    onChange={() => setForm({ ...form, attendance: opt })}
+                    className="sr-only"
+                  />
+                  {opt}
+                </label>
+              ))}
+            </div>
+            {errors.attendance && (
+              <p className="mt-1 text-xs text-red-600">{errors.attendance}</p>
+            )}
+          </fieldset>
 
-              {form.foodPref === "Mixed" && (
+          {/* If NOT attending: show a simple note and stop */}
+          {notAttending && (
+            <div className="mt-6 rounded-lg bg-gray-50 border border-gray-200 px-4 py-3 text-sm text-gray-700">
+              Thanks for telling us. No other details needed.
+            </div>
+          )}
+
+          {/* Attending fields */}
+          {attending && (
+            <>
+              <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <NumberField form={form} setForm={setForm} name="adults" label="Adults" />
+                <NumberField form={form} setForm={setForm} name="kids5to10" label="Kids (5–10)" />
+                <NumberField
+                  form={form}
+                  setForm={setForm}
+                  name="kidsUnder5"
+                  label="Kids (&lt;5)"
+                />
+              </div>
+              {errors.adults && (
+                <p className="mt-1 text-xs text-red-600">{errors.adults}</p>
+              )}
+
+              {/* Food preference */}
+              <fieldset className="mt-6">
+                <legend className="block text-sm font-medium text-black">
+                  Food preference
+                </legend>
+                <div className="mt-2 grid grid-cols-3 gap-2">
+                  {(["Veg", "Non-Veg", "Mixed"] as FoodPref[]).map((opt) => (
+                    <label
+                      key={opt}
+                      className={`flex items-center justify-center rounded-lg border px-3 py-2 cursor-pointer
+                    ${
+                      form.foodPref === opt
+                        ? "border-indigo-500 bg-indigo-50 text-indigo-700"
+                        : "border-gray-300 bg-white"
+                    }`}
+                    >
+                      <input
+                        type="radio"
+                        name="foodPref"
+                        value={opt}
+                        checked={form.foodPref === opt}
+                        onChange={() => setForm({ ...form, foodPref: opt })}
+                        className="sr-only"
+                      />
+                      {opt}
+                    </label>
+                  ))}
+                </div>
+                {errors.foodPref && (
+                  <p className="mt-1 text-xs text-red-600">{errors.foodPref}</p>
+                )}
+              </fieldset>
+
+              {/* Veg / Non-veg split for Mixed */}
+              {mixedMeals && (
                 <>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">
-                      Veg count (approx)
-                    </label>
-                    <input
-                      type="number"
+                  <div className="mt-4 grid grid-cols-2 gap-4">
+                    <NumberField
+                      form={form}
+                      setForm={setForm}
                       name="vegCount"
-                      min={0}
-                      value={form.vegCount}
-                      onChange={onChange}
-                      className={inputClass("vegCount")}
-                      aria-invalid={!!errors.vegCount}
-                      aria-describedby={errors.vegCount ? "err-veg" : undefined}
+                      label="Veg meals"
                     />
-                    {errors.vegCount && (
-                      <p id="err-veg" className="mt-1 text-xs text-red-600">
-                        {errors.vegCount}
-                      </p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">
-                      Non-veg count (approx)
-                    </label>
-                    <input
-                      type="number"
-                      name="nonVegCount"
-                      min={0}
-                      value={form.nonVegCount}
-                      onChange={onChange}
-                      className={inputClass("nonVegCount")}
-                      aria-invalid={!!errors.nonVegCount}
-                      aria-describedby={
-                        errors.nonVegCount ? "err-nonveg" : undefined
-                      }
+                    <NumberField
+                      form={form}
+                      setForm={setForm}
+                      name="nonvegCount"
+                      label="Non-Veg meals"
                     />
-                    {errors.nonVegCount && (
-                      <p id="err-nonveg" className="mt-1 text-xs text-red-600">
-                        {errors.nonVegCount}
-                      </p>
-                    )}
                   </div>
+                  {(errors.vegCount || errors.nonvegCount) && (
+                    <p className="mt-1 text-xs text-red-600">
+                      {errors.vegCount || errors.nonvegCount}
+                    </p>
+                  )}
                 </>
               )}
 
-              <div className="sm:col-span-2">
-                <label className="block text-sm font-medium mb-1">
-                  Allergens (if any)
+              {/* Allergens / Notes */}
+              <div className="mt-6">
+                <label htmlFor="allergens" className="block text-sm font-medium text-black">
+                  Allergens (optional)
                 </label>
                 <input
-                  name="allergens"
-                  value={form.allergens}
-                  onChange={onChange}
-                  className={inputClass("allergens")}
-                  placeholder="e.g., Nuts, dairy, gluten"
+                  id="allergens"
+                  type="text"
+                  placeholder="e.g., peanuts, gluten"
+                  value={form.allergens ?? ""}
+                  onChange={(e) => setForm({ ...form, allergens: e.target.value })}
+                  className="mt-1 block w-full rounded-md border-gray-300 placeholder-gray-400
+                             focus:border-indigo-500 focus:ring-indigo-500"
                 />
               </div>
 
-              <div className="sm:col-span-2">
-                <label className="block text-sm font-medium mb-1">Notes</label>
+              <div className="mt-4">
+                <label htmlFor="notes" className="block text-sm font-medium text-black">
+                  Notes (optional)
+                </label>
                 <textarea
-                  name="notes"
-                  value={form.notes}
-                  onChange={onChange}
+                  id="notes"
                   rows={3}
-                  className={inputClass("notes")}
-                  placeholder="Anything we should know"
+                  placeholder="Anything we should know?"
+                  value={form.notes ?? ""}
+                  onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                  className="mt-1 block w-full rounded-md border-gray-300 placeholder-gray-400
+                             focus:border-indigo-500 focus:ring-indigo-500"
                 />
               </div>
             </>
           )}
-        </div>
 
-        {Object.keys(errors).length > 0 && (
-          <p className="mt-3 text-sm text-red-600">
-            Please fix the highlighted fields.
-          </p>
-        )}
-
-        <div className="mt-6 flex items-center gap-3">
           <button
+            type="submit"
             disabled={submitting}
-            className="rounded-xl bg-indigo-600 text-white px-5 py-2 font-medium shadow hover:bg-indigo-700 disabled:opacity-60"
+            className={`mt-6 inline-flex items-center justify-center rounded-xl px-4 py-2.5 font-medium text-white shadow
+            ${submitting ? "bg-indigo-400" : "bg-indigo-600 hover:bg-indigo-700"}`}
           >
-            {submitting ? "Submitting…" : "Send RSVP"}
+            {submitting ? "Sending..." : "Send RSVP"}
           </button>
-          <span className="text-sm text-gray-500">
-            We’ll use your phone only for event coordination.
-          </span>
-        </div>
-      </form>
-    </>
-  );
-}
-
-function Toast({ show, message }: { show: boolean; message: string }) {
-  if (!show) return null;
-  return (
-    <div
-      role="status"
-      aria-live="polite"
-      className="fixed bottom-4 right-4 z-50 max-w-sm rounded-xl bg-gray-900 text-white shadow-lg px-4 py-3 text-sm"
-    >
-      {message}
-    </div>
+        </form>
+      </div>
+    </section>
   );
 }
