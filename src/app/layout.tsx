@@ -18,8 +18,30 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Birthday Invite",
-  description: "Join us to celebrate!",
+  title: "Shirsh’s 3rd Birthday 🎉",
+  description: "Join us on 21st September 2025 for a fun lunch party!",
+  openGraph: {
+    title: "Shirsh’s 3rd Birthday 🎉",
+    description: "Lunch party • 21 Sep 2025 • 12:30–3:30 pm",
+    url: "https://shirsh-birthday.vercel.app/", // 👈 update with your deployed URL
+    siteName: "Shirsh’s Birthday Invite",
+    images: [
+      {
+        url: "https://shirsh-birthday.vercel.app/og-image.jpg", // 👈 see below
+        width: 1200,
+        height: 630,
+        alt: "Shirsh’s Birthday Invite",
+      },
+    ],
+    locale: "en_IN",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Shirsh’s 3rd Birthday 🎉",
+    description: "Join us for lunch on 21 Sep 2025!",
+    images: ["https://shirsh-birthday.vercel.app/og-image.jpg"],
+  },
 };
 
 export default function RootLayout({
