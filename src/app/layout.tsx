@@ -44,7 +44,7 @@ export default function RootLayout({
         />
 
         {/* All your content stays above */}
-        <div className="relative z-10">
+        <div className="relative z-10 isolate text-black">
           {children}
         </div>
       </body>
