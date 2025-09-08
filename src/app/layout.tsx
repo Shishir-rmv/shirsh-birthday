@@ -25,14 +25,13 @@ export const metadata: Metadata = {
     description: "Lunch party • 21 Sep 2025 • 12:30–3:30 pm",
     url: "https://shirsh-birthday.vercel.app/", // 👈 update with your deployed URL
     siteName: "Shirsh’s Birthday Invite",
-    images: [
+    images:
       {
         url: "https://shirsh-birthday.vercel.app/canva-invite.webp", // 👈 see below
-        width: 1200,
-        height: 630,
+        width: 200,
+        height: 200,
         alt: "Shirsh’s Birthday Invite",
       },
-    ],
     locale: "en_IN",
     type: "website",
   },
