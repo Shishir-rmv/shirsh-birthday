@@ -303,7 +303,7 @@ export default function InviteForm() {
           {attending && (
             <>
               <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <NumberField form={form} setForm={setForm} name="adults" label="Adults" />
+                <NumberField form={form} setForm={setForm} name="adults" label="Guests (11+ years)" />
                 <NumberField form={form} setForm={setForm} name="kids5to10" label="Kids (5–10)" />
                 <NumberField form={form} setForm={setForm} name="kidsUnder5" label="Kids (under 5)" />
               </div>
