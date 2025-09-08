@@ -27,7 +27,7 @@ export const metadata: Metadata = {
     siteName: "Shirsh’s Birthday Invite",
     images:
       {
-        url: "https://shirsh-birthday.vercel.app/canva-invite.webp", // 👈 see below
+        url: "https://shirsh-birthday.vercel.app/og-image.png", // 👈 see below
         width: 200,
         height: 200,
         alt: "Shirsh’s Birthday Invite",
@@ -39,7 +39,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Shirsh’s 3rd Birthday 🎉",
     description: "Join us for lunch on 21 Sep 2025!",
-    images: ["https://shirsh-birthday.vercel.app/canva-invite.webp"],
+    images: ["https://shirsh-birthday.vercel.app/og-image.png"],
   },
 };
 
