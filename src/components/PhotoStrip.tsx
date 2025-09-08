@@ -1,3 +1,4 @@
+// components/PhotoStrip.tsx
 "use client";
 
 import Image from "next/image";
@@ -10,17 +11,19 @@ export default function PhotoStrip({
 }: {
   photos: { src: string; alt?: string }[];
 }) {
-  // single source of truth
   const [lightboxIndex, setLightboxIndex] = React.useState<number | null>(null);
 
-  const openAt = (i: number) => setLightboxIndex(i);
-  const close = () => setLightboxIndex(null);
-
   return (
-    <section className="px-6">
+    <section className="relative px-6">
+      {/* Mobile-friendly soft top gradient to lift text over dark photos */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/35 to-transparent sm:hidden" />
+
       <div className="max-w-4xl mx-auto">
-        <h2 className="h-heading mb-3">Moments</h2>
-        <p className="text-sm text-gray-600 mb-4">
+        {/* 🔑 Force light text here */}
+        <h2 className="h-heading mb-3 text-white drop-shadow-[0_2px_10px_rgba(0,0,0,.5)]">
+          Moments
+        </h2>
+        <p className="text-sm text-white/85 mb-4 drop-shadow-[0_2px_8px_rgba(0,0,0,.5)]">
           A few pictures of our little star ✨ (tap to view)
         </p>
 
@@ -28,7 +31,7 @@ export default function PhotoStrip({
           {photos.map((p, i) => (
             <button
               key={i}
-              onClick={() => openAt(i)}
+              onClick={() => setLightboxIndex(i)}
               className="relative aspect-[4/5] overflow-hidden rounded-2xl shadow bg-gray-100 group focus:outline-none"
             >
               <Image
@@ -44,14 +47,13 @@ export default function PhotoStrip({
         </div>
       </div>
 
-      {/* render when there's a selected index */}
       {lightboxIndex !== null && (
         <Lightbox
           open
           index={lightboxIndex}
-          close={close}
+          close={() => setLightboxIndex(null)}
           slides={photos.map((p) => ({ src: p.src }))}
-          carousel={{ finite: false }} // loop
+          carousel={{ finite: false }}
         />
       )}
     </section>
