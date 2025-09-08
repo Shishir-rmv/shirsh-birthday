@@ -29,7 +29,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${poppins.variable} ${dancing.variable} font-sans bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-pink-50 to-indigo-50`}>
+      <body className={`${poppins.variable} ${dancing.variable} font-sans bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-pink-50 to-indigo-50`}
+      style={{ colorScheme: "light" }}
+      >
         {/* Site-wide parallax confetti background */}
         <SiteConfettiBackground
           backSrc="/photos/confetti1.png"
