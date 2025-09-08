@@ -9,7 +9,7 @@ type FoodPref = "Veg" | "Non-Veg";
 
 type RsvpForm = {
   name: string;
-  phone?: string;
+  phone: string;
   attendance?: Attendance;
   adults?: number;
   kids5to10?: number;
@@ -24,7 +24,7 @@ type Errors = Partial<Record<keyof RsvpForm, string>> & {
 };
 
 export default function InviteForm() {
-  const [form, setForm] = React.useState<RsvpForm>({ name: "" });
+  const [form, setForm] = React.useState<RsvpForm>({ name: "", phone: ""});
   const [errors, setErrors] = React.useState<Errors>({});
   const [submitting, setSubmitting] = React.useState(false);
 
@@ -37,6 +37,7 @@ export default function InviteForm() {
   function validate(): boolean {
     const e: Errors = {};
     if (!form.name?.trim()) e.name = "Please enter your name.";
+    if (!form.phone?.trim()) e.phone = "Please enter your phone number.";
     if (!form.attendance) e.attendance = "Please select an option.";
     if (attending) {
       const total =
@@ -58,7 +59,7 @@ export default function InviteForm() {
     try {
       const payload: RsvpForm = {
         name: form.name.trim(),
-        phone: form.phone?.trim() || undefined,
+        phone: form.phone.trim(),
         attendance: form.attendance,
         adults: form.adults ?? undefined,
         kids5to10: form.kids5to10 ?? undefined,
@@ -242,20 +243,26 @@ export default function InviteForm() {
             </p>
           )}
 
-          {/* Phone (optional) */}
+          {/* Phone*/}
           <div className="mt-4">
             <label htmlFor="phone" className="block text-sm font-medium text-black">
-              Phone (optional)
+              Phone
             </label>
             <input
               id="phone"
               type="tel"
               inputMode="tel"
               placeholder="e.g., 98765 43210"
-              value={form.phone ?? ""}
+              value={form.phone}
               onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              aria-describedby={errors.phone ? "err-phone" : undefined}
               className="mt-1 block w-full rounded-md border-gray-300 placeholder-gray-400 focus:border-indigo-500 focus:ring-indigo-500"
             />
+            {errors.phone && (
+              <p id="err-phone" className="mt-1 text-xs text-red-600">
+                {errors.phone}
+              </p>
+            )}
           </div>
 
           {/* Attendance */}
